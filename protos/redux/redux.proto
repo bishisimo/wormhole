@@ -1,0 +1,67 @@
+//@Time : 2020/10/13 上午9:10
+//@Author : bishisimo
+syntax = "proto3";
+option  go_package = "protos/redux";
+service Redux {
+  //心跳
+  rpc BeatHeat(Heat) returns (Reply);
+  //健康检查
+  rpc CheckHealth(Empty) returns (Reply);
+  //展示在线列表;
+  rpc ListDevice(Empty) returns (ListResponse);
+  //传入非host获取host
+  rpc GetDevice(DeviceKey) returns (Device);
+  //发送文本信息
+  rpc SendText(TextMessage)returns(Reply);
+  //添加流式订阅,返回流式数据
+  rpc SendFile(stream FileMessage) returns (Reply) ;
+  rpc GetMessageStream(Empty)returns (stream Message);
+  rpc Stop(Empty) returns (Reply);
+  rpc Restart(Empty) returns (Reply);
+  rpc Snapshot(Empty)returns (Reply);
+}
+
+message Empty{}
+
+message Heat{
+  string Host = 1;
+  string Name = 2;
+  int32 Port = 3;
+  string Event=4;
+}
+
+message Reply {
+  int32 Status = 1;
+}
+
+message Message{
+  string data=1;
+}
+
+message DeviceKey{
+  Heat Heat = 1;
+  int32  Index = 2;
+
+}
+message Device{
+  DeviceKey Key = 1;
+  int32 StateCode = 2;
+  string LastActiveTime = 3;
+}
+message ListResponse{
+  repeated Device Devices = 1;
+}
+
+message TextMessage{
+  string FromHost = 1;
+  string Text = 2;
+}
+message FileMessage{
+  string Key = 1;//文件标识
+  string FromHost = 2;//发送方ip
+  int32 Num = 3;//文件数量
+  string Path = 4;//当前区块
+  int32 Size = 5;//总文件大小
+  bytes Data = 6;//数据
+  int32 Perm = 7;//文件权限
+}
