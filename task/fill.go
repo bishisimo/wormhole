@@ -1,26 +1,21 @@
+// @time : 2021/6/1 17:59
+// @author: bishisimo
+// @describe:
 package task
 
 import (
 	"context"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
-	"google.golang.org/grpc"
 	"strings"
 	"wormhole/protos/redux"
 )
 
-func CheckDevice(key *redux.DeviceKey) bool {
-	if key.Heat.Host != "" && key.Heat.Port != 0 {
-		return true
-	}
-	conn_local, err := grpc.Dial("localhost:"+viper.GetString("self_port"), grpc.WithInsecure())
-	if err != nil || conn_local == nil {
-		logrus.Errorln("本地服务端离线!")
+func FillDeviceKey(key *redux.DeviceKey) bool {
+	cl := NewLocalClient()
+	if cl == nil {
 		return false
 	}
-	defer conn_local.Close()
-	cl := redux.NewReduxClient(conn_local)
-
+	defer cl.Close()
 	device, err := cl.GetDevice(context.Background(), key)
 	if err != nil {
 		if strings.Contains(err.Error(), "Unavailable") {

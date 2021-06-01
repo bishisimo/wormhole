@@ -3,6 +3,8 @@
 package main
 
 import (
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/pkgerrors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"os"
@@ -14,6 +16,7 @@ import (
 )
 
 func main() {
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 	sourceDir, err := exec.LookPath(os.Args[0])
 	if err != nil {
 		logrus.Errorln("无法检测程序目录", err.Error())

@@ -1,5 +1,6 @@
-//@Time : 2020/10/14 上午9:11
-//@Author : bishisimo
+// @time : 2020/10/14 上午9:11
+// @author : bishisimo
+// @describe: udp服务模块
 package core
 
 import (

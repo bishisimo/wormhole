@@ -4,11 +4,12 @@ package cmd
 
 import (
 	"context"
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"wormhole/protos/redux"
+	"wormhole/utils"
 )
 
 var snapshotCmd = &cobra.Command{
@@ -20,14 +21,14 @@ var snapshotCmd = &cobra.Command{
 		port := viper.GetString("self_port")
 		conn, err := grpc.Dial("localhost:"+port, grpc.WithInsecure())
 		if err != nil {
-			logrus.Errorln(err.Error())
+			utils.HandleErr(err)
 			return
 		}
 		defer conn.Close()
 		c := redux.NewReduxClient(conn)
 		_, err = c.Snapshot(context.Background(), new(redux.Empty))
 		if err != nil {
-			logrus.Errorln("服务端未启动")
+			log.Error().Msg("服务端未启动")
 		}
 	},
 }

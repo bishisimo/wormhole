@@ -17,15 +17,15 @@ var sendCmd = &cobra.Command{
 	Use:     "send",
 	Aliases: []string{"s"},
 	Short:   "发送文本消息或文件",
-	Long:    `
+	Long: `
 1、wormhole send 0 "this is message"
 2、wormhole send 192.168.1.108 /path/for/file
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(args)==0{
+		if len(args) == 0 {
 			logrus.Info("无效的参数")
-			_=cmd.Help()
-		}else if len(args) > 0 {
+			_ = cmd.Help()
+		} else if len(args) > 0 {
 			regIP := regexp.MustCompile(`\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}:*\d{0,5}`)
 			regIndex := regexp.MustCompile(`\d+`)
 			firstArg := []byte(args[0])
@@ -66,7 +66,7 @@ var sendCmd = &cobra.Command{
 				Port: int32(devicePort),
 			},
 		}
-		if !task.CheckDevice(key) {
+		if !task.FillDeviceKey(key) {
 			return
 		}
 		if targetFile != "" {
@@ -74,7 +74,6 @@ var sendCmd = &cobra.Command{
 		} else {
 			task.SendText(text, key.Heat)
 		}
-
 	},
 }
 

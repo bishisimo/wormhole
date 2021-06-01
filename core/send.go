@@ -1,11 +1,12 @@
-// @time : 2021/6/1 17:56
+// @time : 2021/5/31 15:52
 // @author: bishisimo
-// @describe:
-package task
+// @describe: 消息文件发送模块
+package core
 
 import (
 	"bufio"
 	"context"
+	"errors"
 	"github.com/cheggaaa/pb/v3"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -14,13 +15,81 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"wormhole/protos/redux"
 	"wormhole/utils"
 )
 
-func SendText(text string, heat *redux.Heat) {
+func (self *reduxServer) destParseKey(dest string) *redux.DeviceKey {
+	key := &redux.DeviceKey{
+		Heat: &redux.Heat{
+			Host:  "",
+			Name:  "",
+			Port:  0,
+			Event: "",
+		},
+		Index: 0,
+	}
+	regHost := regexp.MustCompile(`\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}:*\d{0,5}`) //ip或者ip:port
+	regIndex := regexp.MustCompile(`\d+`)
+	if regHost.Match([]byte(dest)) {
+		sp := strings.Split(dest, ":")
+		key.Heat.Host = sp[0]
+		if len(sp) == 2 {
+			port, err := strconv.Atoi(sp[1])
+			if err == nil {
+				key.Heat.Port = int32(port)
+			}
+		}
+	} else {
+		if regIndex.Match([]byte(dest)) {
+			index, err := strconv.Atoi(dest)
+			if err != nil {
+				utils.HandleErr(err)
+				return nil
+			}
+			key.Index = int32(index)
+		} else {
+			key.Heat.Name = dest
+		}
+	}
+	return key
+}
+
+//发送文本消息
+func (self *reduxServer) SendText(ctx context.Context, message *redux.Message) (*redux.Reply, error) {
+	key := self.destParseKey(message.To)
+	if ok := self.FillDeviceKey(key); ok {
+		self.sendText(message.Data, key.Heat)
+	} else {
+		return nil, errors.New("FillDeviceKey fail")
+	}
+	return new(redux.Reply), nil
+}
+
+//发送文件
+func (self *reduxServer) SendFile(ctx context.Context, message *redux.Message) (*redux.Reply, error) {
+	key := self.destParseKey(message.To)
+	if ok := self.FillDeviceKey(key); ok {
+		self.sendFile(message.Data, key.Heat)
+	} else {
+		return nil, errors.New("FillDeviceKey fail")
+	}
+	return new(redux.Reply), nil
+}
+
+//自动检测文件或文本消息进行发送
+func (self *reduxServer) SendAuto(ctx context.Context, message *redux.Message) (*redux.Reply, error) {
+	if utils.IsExistPath(message.Data) {
+		return self.SendFile(ctx, message)
+	} else {
+		return self.SendText(ctx, message)
+	}
+}
+
+func (self *reduxServer) sendText(text string, heat *redux.Heat) {
 	conn, err := grpc.Dial(heat.Host+":"+strconv.Itoa(int(heat.Port)), grpc.WithInsecure())
 	if err != nil {
 		log.Error().Stack().Err(err).Send()
@@ -39,7 +108,7 @@ func SendText(text string, heat *redux.Heat) {
 	}
 }
 
-func SendFile(targetFile string, heat *redux.Heat) {
+func (self *reduxServer) sendFile(targetFile string, heat *redux.Heat) {
 	//根文件名称
 	ads, err := filepath.Abs(targetFile)
 	if err != nil {
@@ -89,13 +158,13 @@ func SendFile(targetFile string, heat *redux.Heat) {
 		message.Path = softFilePath
 		if softFilePath == "" {
 			message.Num = 0
-			SendSingleFile(putStream, realFilePath, message, true)
+			self.sendSingleFile(putStream, realFilePath, message, self.IsBacked)
 		} else {
 			if bar == nil {
 				bar = pb.StartNew(len(filePaths))
 			}
 			message.Num = int32(len(filePaths))
-			SendSingleFile(putStream, realFilePath, message, false)
+			self.sendSingleFile(putStream, realFilePath, message, false)
 			bar.Increment()
 		}
 	}
@@ -106,7 +175,7 @@ func SendFile(targetFile string, heat *redux.Heat) {
 }
 
 //发送单文件数据,只处理文件数据,不处理消息元数据
-func SendSingleFile(putStream redux.Redux_AcceptFileClient, realFilePath string, message *redux.FileMessage, enableProgress bool) {
+func (self *reduxServer) sendSingleFile(putStream redux.Redux_AcceptFileClient, realFilePath string, message *redux.FileMessage, enableProgress bool) {
 	var bar *pb.ProgressBar
 	var barReader *pb.Reader
 	state, err := os.Stat(realFilePath)
