@@ -30,8 +30,6 @@ import (
 	"wormhole/utils"
 )
 
-var IsBaked = false
-
 type reduxServer struct {
 	CurrentIndex int
 	IndexMap     map[int]*redux.Device
@@ -41,7 +39,6 @@ type reduxServer struct {
 	Ctx          context.Context
 	Cancel       context.CancelFunc
 	MessageChan  chan string
-	IsBaked      bool
 }
 
 //提供本地消息流，给外部程序使用
@@ -72,7 +69,6 @@ func GetReduxServer() *reduxServer {
 			NameMap:      make(map[string]*redux.Device),
 			EventChan:    make(chan *redux.Heat, 255),
 			MessageChan:  make(chan string, 255),
-			IsBaked:      IsBaked,
 		}
 		go server.EventHandle()
 	})
@@ -425,12 +421,12 @@ func (self *reduxServer) SendFile(server redux.Redux_SendFileServer) error {
 			}
 			defer f.Close()
 			writer = bufio.NewWriter(f)
-			if message.Num == 0 && self.IsBaked {
+			if message.Num == 0 {
 				fileBar = pb.Full.Start64(int64(message.Size))
 				//defer fileBar.Finish()
 				barReader = fileBar.NewProxyWriter(writer)
 
-			} else if self.IsBaked {
+			} else {
 				if dirBar == nil {
 					dirBar = pb.StartNew(int(message.Num))
 					//defer dirBar.Finish()

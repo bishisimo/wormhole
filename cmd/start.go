@@ -9,7 +9,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"wormhole/core"
 )
 
 var startCmd = &cobra.Command{
@@ -23,7 +22,6 @@ var startCmd = &cobra.Command{
 			logrus.Errorln(err.Error())
 		}
 		logrus.SetOutput(f)
-		core.IsBaked = true
 		exe := exec.Command(os.Args[0], "server")
 		logPath := viper.GetString("log_path")
 		if logPath != "" {
